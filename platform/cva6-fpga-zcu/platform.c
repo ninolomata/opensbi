@@ -10,6 +10,7 @@
 #include <sbi/sbi_trap.h>
 #include <sbi/sbi_const.h>
 #include <sbi/sbi_platform.h>
+#include <sbi/sbi_ipi.h>
 
 #include <sbi_utils/irqchip/plic.h>
 #include <sbi_utils/sys/clint.h>
@@ -37,13 +38,7 @@ static struct clint_data clint = {
 };
 
 
-static void uart_putc(char c){
-    xil_uart_putc((void*)ZYNQ_UART0_ADDR, c);
-}
 
-static int uart_getc(){
-    return xil_uart_getc((void*)ZYNQ_UART0_ADDR);
-}
 
 static int zynq_early_init(bool cold_boot)
 {
@@ -57,6 +52,7 @@ static int zynq_final_init(bool cold_boot)
 
 static int zynq_console_init(void)
 {
+	xil_uart_init(ZYNQ_UART0_ADDR);
     return 0;
 }
 
@@ -74,6 +70,7 @@ static int zynq_irqchip_init(bool cold_boot)
 	return plic_warm_irqchip_init(&plic, 2 * hartid, 2 * hartid + 1);
 }
 
+
 static int zynq_ipi_init(bool cold_boot)
 {
 	int rc;
@@ -83,7 +80,6 @@ static int zynq_ipi_init(bool cold_boot)
 		if (rc)
 			return rc;
 	}
-
 	return clint_warm_ipi_init();
 }
 
@@ -100,26 +96,14 @@ static int zynq_timer_init(bool cold_boot)
 	return clint_warm_timer_init();
 }
 
-static void zynq_system_down(u32 reset_type, u32 reset_reason)
-{
-
-}
 
 const struct sbi_platform_operations platform_ops = {
 	.early_init		= zynq_early_init,
 	.final_init		= zynq_final_init,
-	.console_putc		= uart_putc,
-	.console_getc		= uart_getc,
 	.console_init		= zynq_console_init,
 	.irqchip_init		= zynq_irqchip_init,
-	.ipi_send		= clint_ipi_send,
-	.ipi_clear		= clint_ipi_clear,
 	.ipi_init		= zynq_ipi_init,
-	.timer_value		= clint_timer_value,
-	.timer_event_stop	= clint_timer_event_stop,
-	.timer_event_start	= clint_timer_event_start,
 	.timer_init		= zynq_timer_init,
-	.system_reset		= zynq_system_down,
 };
 
 const struct sbi_platform platform = {

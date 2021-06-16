@@ -8,6 +8,8 @@
 #include <sbi/riscv_encoding.h>
 #include <sbi/sbi_const.h>
 #include <sbi/sbi_platform.h>
+#include <sbi/sbi_console.h>
+#include <sbi/sbi_system.h>
 
 #include <sbi_utils/irqchip/plic.h>
 #include <sbi_utils/sys/clint.h>
@@ -40,8 +42,33 @@ static int getc(){
     return 0;
 }
 
+static struct sbi_console_device emul_console = {
+	.name = "emul_uart",
+	.console_putc = putc,
+	.console_getc = getc
+};
+
+void tohost_exit(uintptr_t code);
+static void emul_system_down(u32 reset_type, u32 reset_reason)
+{
+	/* For now nothing to do. */
+	tohost_exit(0);
+}
+
+static int emul_system_reset_check(u32 type, u32 reason)
+{
+	return 1;
+}
+
+static struct sbi_system_reset_device emul_reset = {
+	.name = "emul_reset",
+	.system_reset_check = emul_system_reset_check,
+	.system_reset = emul_system_down
+};
 static int emul_early_init(bool cold_boot)
 {
+	if (cold_boot)
+		sbi_system_reset_set_device(&emul_reset);
 	return 0;
 }
 
@@ -52,6 +79,7 @@ static int emul_final_init(bool cold_boot)
 
 static int emul_console_init(void)
 {
+	sbi_console_set_device(&emul_console);
     return 0;
 }
 
@@ -95,29 +123,13 @@ static int emul_timer_init(bool cold_boot)
 	return clint_warm_timer_init();
 }
 
-void tohost_exit(uintptr_t code);
-static void emul_system_down(u32 reset_type, u32 reset_reason)
-{
-	/* For now nothing to do. */
-	tohost_exit(0);
-}
-
-
 const struct sbi_platform_operations platform_ops = {
 	.early_init		= emul_early_init,
 	.final_init		= emul_final_init,
-	.console_putc		= putc,
-	.console_getc		= getc,
 	.console_init		= emul_console_init,
 	.irqchip_init		= emul_irqchip_init,
-	.ipi_send		= clint_ipi_send,
-	.ipi_clear		= clint_ipi_clear,
 	.ipi_init		= emul_ipi_init,
-	.timer_value		= clint_timer_value,
-	.timer_event_stop	= clint_timer_event_stop,
-	.timer_event_start	= clint_timer_event_start,
-	.timer_init		= emul_timer_init,
-	.system_reset		= emul_system_down,
+	.timer_init		= emul_timer_init
 };
 
 const struct sbi_platform platform = {
