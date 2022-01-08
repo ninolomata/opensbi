@@ -16,6 +16,7 @@
 #include <sbi_utils/irqchip/plic.h>
 #include <sbi_utils/serial/uart8250.h>
 #include <sbi_utils/timer/aclint_mtimer.h>
+#include <libfdt.h>
 
 #define OPENPITON_DEFAULT_UART_ADDR		0xfff0c2c000
 #define OPENPITON_DEFAULT_UART_FREQ		60000000
@@ -24,7 +25,7 @@
 #define OPENPITON_DEFAULT_UART_REG_WIDTH	1
 #define OPENPITON_DEFAULT_PLIC_ADDR		0xfff1100000
 #define OPENPITON_DEFAULT_PLIC_NUM_SOURCES	2
-#define OPENPITON_DEFAULT_HART_COUNT		3
+#define OPENPITON_DEFAULT_HART_COUNT		2
 #define OPENPITON_DEFAULT_CLINT_ADDR		0xfff1020000
 #define OPENPITON_DEFAULT_ACLINT_MTIMER_FREQ	1000000
 #define OPENPITON_DEFAULT_ACLINT_MSWI_ADDR	\
@@ -108,12 +109,18 @@ static int openpiton_early_init(bool cold_boot)
 static int openpiton_final_init(bool cold_boot)
 {
 	void *fdt;
+	int debugger_off;
 
 	if (!cold_boot)
 		return 0;
 
 	fdt = fdt_get_address();
 	fdt_fixups(fdt);
+
+	//Delete debugger node
+	debugger_off = fdt_node_offset_by_compatible(fdt, 0, "riscv,debug-013");
+	if(debugger_off > 0)
+		fdt_del_node(fdt,debugger_off);
 
 	return 0;
 }
@@ -217,7 +224,7 @@ const struct sbi_platform_operations platform_ops = {
 const struct sbi_platform platform = {
 	.opensbi_version = OPENSBI_VERSION,
 	.platform_version = SBI_PLATFORM_VERSION(0x0, 0x01),
-	.name = "OPENPITON RISC-V",
+	.name = "OPENPITON RISC-V17",
 	.features = SBI_PLATFORM_DEFAULT_FEATURES,
 	.hart_count = OPENPITON_DEFAULT_HART_COUNT,
 	.hart_stack_size = SBI_PLATFORM_DEFAULT_HART_STACK_SIZE,
