@@ -8,6 +8,7 @@
  *	Atish Patra <atish.patra@wdc.com>
  */
 
+#include <sbi/sbi_console.h>
 #include <libfdt.h>
 #include <sbi/sbi_hart.h>
 #include <sbi/sbi_error.h>
@@ -49,7 +50,7 @@ int fdt_pmu_fixup(void *fdt)
 	pmu_offset = fdt_node_offset_by_compatible(fdt, -1, "riscv,pmu");
 	if (pmu_offset < 0)
 		return SBI_EFAIL;
-
+	sbi_printf("hello 6 \r\n");
 	fdt_delprop(fdt, pmu_offset, "riscv,event-to-mhpmcounters");
 	fdt_delprop(fdt, pmu_offset, "riscv,event-to-mhpmevent");
 	fdt_delprop(fdt, pmu_offset, "riscv,raw-event-to-mhpmcounters");
@@ -63,19 +64,20 @@ int fdt_pmu_setup(void *fdt)
 {
 	int i, pmu_offset, len, result;
 	const u32 *event_val;
-	const u32 *event_ctr_map;
-	struct fdt_pmu_hw_event_select *event;
+	/* const u32 *event_ctr_map; */
+	/* struct fdt_pmu_hw_event_select *event; */
 	uint64_t raw_selector, select_mask;
-	u32 event_idx_start, event_idx_end, ctr_map;
-
+	/* u32 event_idx_start, event_idx_end, ctr_map; */
+	u32 ctr_map;
+	sbi_printf("init pmu started 1 \r\n");
 	if (!fdt)
 		return SBI_EINVAL;
 
 	pmu_offset = fdt_node_offset_by_compatible(fdt, -1, "riscv,pmu");
 	if (pmu_offset < 0)
 		return SBI_EFAIL;
-
-	event_ctr_map = fdt_getprop(fdt, pmu_offset, "riscv,event-to-mhpmcounters", &len);
+	sbi_printf("pmu 1 \r\n");
+/* 	event_ctr_map = fdt_getprop(fdt, pmu_offset, "riscv,event-to-mhpmcounters", &len);
 	if (!event_ctr_map || len < 8)
 		return SBI_EFAIL;
 	len = len / (sizeof(u32) * 3);
@@ -84,9 +86,9 @@ int fdt_pmu_setup(void *fdt)
 		event_idx_end = fdt32_to_cpu(event_ctr_map[3 * i + 1]);
 		ctr_map = fdt32_to_cpu(event_ctr_map[3 * i + 2]);
 		sbi_pmu_add_hw_event_counter_map(event_idx_start, event_idx_end, ctr_map);
-	}
-
-	event_val = fdt_getprop(fdt, pmu_offset, "riscv,event-to-mhpmevent", &len);
+	} */
+sbi_printf("pmu 2 \r\n");
+/* 	event_val = fdt_getprop(fdt, pmu_offset, "riscv,event-to-mhpmevent", &len);
 	if (!event_val || len < 8)
 		return SBI_EFAIL;
 	len = len / (sizeof(u32) * 3);
@@ -96,21 +98,24 @@ int fdt_pmu_setup(void *fdt)
 		event->select = fdt32_to_cpu(event_val[3 * i + 1]);
 		event->select = (event->select << 32) | fdt32_to_cpu(event_val[3 * i + 2]);
 		hw_event_count++;
-	}
-
+	} */
+sbi_printf("pmu 3 \r\n");
 	event_val = fdt_getprop(fdt, pmu_offset, "riscv,raw-event-to-mhpmcounters", &len);
 	if (!event_val || len < 20)
 		return SBI_EFAIL;
 	len = len / (sizeof(u32) * 5);
 	for (i = 0; i < len; i++) {
+		sbi_printf("hello 2 \r\n");
 		raw_selector = fdt32_to_cpu(event_val[5 * i]);
 		raw_selector = (raw_selector << 32) | fdt32_to_cpu(event_val[5 * i + 1]);
 		select_mask = fdt32_to_cpu(event_val[5 * i + 2]);
 		select_mask = (select_mask  << 32) | fdt32_to_cpu(event_val[5 * i + 3]);
 		ctr_map = fdt32_to_cpu(event_val[5 * i + 4]);
 		result = sbi_pmu_add_raw_event_counter_map(raw_selector, select_mask, ctr_map);
-		if (!result)
+		if (!result)  {
 			hw_event_count++;
+			sbi_printf("hello 3 \r\n");
+		}
 	}
 
 	return 0;

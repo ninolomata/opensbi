@@ -356,8 +356,10 @@ int sbi_pmu_ctr_start(unsigned long cbase, unsigned long cmask,
 			continue;
 		else if (event_idx_type == SBI_PMU_EVENT_TYPE_FW)
 			ret = pmu_ctr_start_fw(cbase, event_code, ival, bUpdate);
-		else
+		else {
+			//sbi_printf("start ctr cbase: %lx ival: %lx bupdate: %d \r\n",cbase, ival, bUpdate);
 			ret = pmu_ctr_start_hw(cbase, ival, bUpdate);
+		}
 	}
 
 	return ret;
@@ -394,7 +396,7 @@ static int pmu_ctr_stop_fw(uint32_t cidx, uint32_t fw_evt_code)
 	return 0;
 }
 
-static int pmu_reset_hw_mhpmevent(int ctr_idx)
+/* static int pmu_reset_hw_mhpmevent(int ctr_idx)
 {
 	if (ctr_idx < 3 || ctr_idx >= SBI_PMU_HW_CTR_MAX)
 		return SBI_EFAIL;
@@ -406,7 +408,7 @@ static int pmu_reset_hw_mhpmevent(int ctr_idx)
 #endif
 
 	return 0;
-}
+} */
 
 int sbi_pmu_ctr_stop(unsigned long cbase, unsigned long cmask,
 		     unsigned long flag)
@@ -433,55 +435,15 @@ int sbi_pmu_ctr_stop(unsigned long cbase, unsigned long cmask,
 
 		if (flag & SBI_PMU_STOP_FLAG_RESET) {
 			active_events[hartid][cbase] = SBI_PMU_EVENT_IDX_INVALID;
-			pmu_reset_hw_mhpmevent(cbase);
+			//pmu_reset_hw_mhpmevent(cbase);
 		}
 	}
 
 	return ret;
 }
 
-static void pmu_update_inhibit_flags(unsigned long flags, uint64_t *mhpmevent_val)
-{
-	if (flags & SBI_PMU_CFG_FLAG_SET_VUINH)
-		*mhpmevent_val |= MHPMEVENT_VUINH;
-	if (flags & SBI_PMU_CFG_FLAG_SET_VSINH)
-		*mhpmevent_val |= MHPMEVENT_VSINH;
-	if (flags & SBI_PMU_CFG_FLAG_SET_UINH)
-		*mhpmevent_val |= MHPMEVENT_UINH;
-	if (flags & SBI_PMU_CFG_FLAG_SET_SINH)
-		*mhpmevent_val |= MHPMEVENT_SINH;
-}
 
-static int pmu_update_hw_mhpmevent(struct sbi_pmu_hw_event *hw_evt, int ctr_idx,
-				   unsigned long flags, unsigned long eindex,
-				   uint64_t data)
-{
-	struct sbi_scratch *scratch = sbi_scratch_thishart_ptr();
-	const struct sbi_platform *plat = sbi_platform_ptr(scratch);
-	uint64_t mhpmevent_val;
 
-	/* Get the final mhpmevent value to be written from platform */
-	mhpmevent_val = sbi_platform_pmu_xlate_to_mhpmevent(plat, eindex, data);
-
-	if (!mhpmevent_val || ctr_idx < 3 || ctr_idx >= SBI_PMU_HW_CTR_MAX)
-		return SBI_EFAIL;
-
-	/* Always clear the OVF bit and inhibit countin of events in M-mode */
-	if (sbi_hart_has_feature(scratch, SBI_HART_HAS_SSCOFPMF))
-		mhpmevent_val = (mhpmevent_val & ~MHPMEVENT_SSCOF_MASK) | MHPMEVENT_MINH;
-
-	/* Update the inhibit flags based on inhibit flags received from supervisor */
-	pmu_update_inhibit_flags(flags, &mhpmevent_val);
-
-#if __riscv_xlen == 32
-	csr_write_num(CSR_MHPMEVENT3 + ctr_idx - 3, mhpmevent_val & 0xFFFFFFFF);
-	csr_write_num(CSR_MHPMEVENT3H + ctr_idx - 3, mhpmevent_val >> BITS_PER_LONG);
-#else
-	csr_write_num(CSR_MHPMEVENT3 + ctr_idx - 3, mhpmevent_val);
-#endif
-
-	return 0;
-}
 
 static int pmu_ctr_find_fixed_fw(unsigned long evt_idx_code)
 {
@@ -561,9 +523,9 @@ static int pmu_ctr_find_hw(unsigned long cbase, unsigned long cmask, unsigned lo
 		else
 			return SBI_EFAIL;
 	}
-	ret = pmu_update_hw_mhpmevent(temp, ctr_idx, flags, event_idx, data);
+	/* ret = pmu_update_hw_mhpmevent(temp, ctr_idx, flags, event_idx, data);
 
-	if (!ret)
+	if (!ret) */
 		ret = ctr_idx;
 
 	return ret;

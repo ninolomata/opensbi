@@ -17,7 +17,9 @@
 #include <sbi_utils/irqchip/plic.h>
 #include <sbi_utils/serial/uart8250.h>
 #include <sbi_utils/timer/aclint_mtimer.h>
-
+#include <libfdt.h>
+#include <sbi/sbi_pmu.h>
+#include <sbi/sbi_console.h>
 #define ARIANE_UART_ADDR			0x10000000
 #define ARIANE_UART_FREQ			50000000
 #define ARIANE_UART_BAUDRATE			115200
@@ -32,7 +34,7 @@
 						 CLINT_MSWI_OFFSET)
 #define ARIANE_ACLINT_MTIMER_ADDR		(ARIANE_CLINT_ADDR + \
 						 CLINT_MTIMER_OFFSET)
-
+static uint32_t hw_event_count;
 static struct plic_data plic = {
 	.addr = ARIANE_PLIC_ADDR,
 	.num_src = ARIANE_PLIC_NUM_SOURCES,
@@ -73,14 +75,20 @@ static int ariane_early_init(bool cold_boot)
 static int ariane_final_init(bool cold_boot)
 {
 	void *fdt;
+    int debugger_off;
 
-	if (!cold_boot)
-		return 0;
+    if (!cold_boot)
+        return 0;
 
-	fdt = fdt_get_address();
-	fdt_fixups(fdt);
+    fdt = fdt_get_address();
+    fdt_fixups(fdt);
 
-	return 0;
+    //Delete debugger node
+    debugger_off = fdt_node_offset_by_compatible(fdt, 0, "riscv,debug-013");
+    if(debugger_off > 0)
+        fdt_del_node(fdt,debugger_off);
+
+    return 0;
 }
 
 /*
@@ -157,7 +165,7 @@ static int ariane_ipi_init(bool cold_boot)
 static int ariane_timer_init(bool cold_boot)
 {
 	int ret;
-
+	sbi_printf("hey 0 \r\n");
 	if (cold_boot) {
 		ret = aclint_mtimer_cold_init(&mtimer, NULL);
 		if (ret)
@@ -165,6 +173,34 @@ static int ariane_timer_init(bool cold_boot)
 	}
 
 	return aclint_mtimer_warm_init();
+}
+
+static int generic_pmu_init(void)
+{
+	/* sbi_printf("init pmu \r\n");
+	return fdt_pmu_setup(fdt_get_address()); */
+	u32 ctr_map[15] = {0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000, 0x10000,0x20000};
+	int result;
+	uint64_t select_mask = 0xffffffffffffffff;
+	uint64_t raw_selector[15] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
+	for(int i = 0; i < 15; i++){
+		result = sbi_pmu_add_raw_event_counter_map(raw_selector[i], select_mask, ctr_map[i]);
+		if (!result)  {
+				hw_event_count++;
+		} else {
+			sbi_printf("error");
+			return -1;
+		}
+	}
+	return result;
+}
+
+static uint64_t generic_pmu_xlate_to_mhpmevent(uint32_t event_idx,
+					       uint64_t data)
+{
+	uint64_t evt_val = 0;
+
+	return evt_val;
 }
 
 /*
@@ -176,6 +212,8 @@ const struct sbi_platform_operations platform_ops = {
 	.console_init = ariane_console_init,
 	.irqchip_init = ariane_irqchip_init,
 	.ipi_init = ariane_ipi_init,
+	.pmu_init		= generic_pmu_init,
+	.pmu_xlate_to_mhpmevent = generic_pmu_xlate_to_mhpmevent,
 	.timer_init = ariane_timer_init,
 };
 
