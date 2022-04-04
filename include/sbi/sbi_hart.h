@@ -24,9 +24,14 @@ enum sbi_hart_features {
 	SBI_HART_HAS_SSCOFPMF = (1 << 3),
 	/** HART has timer csr implementation in hardware */
 	SBI_HART_HAS_TIME = (1 << 4),
+	/** HART has MENVCFG CSR */
+	SBI_HART_HAS_MENVCFG = (1 << 6),
+  	/** HART has SSTC extension implemented in hardware */
+	SBI_HART_HAS_SSTC = (1 << 7),
+	
 
 	/** Last index of Hart features*/
-	SBI_HART_HAS_LAST_FEATURE = SBI_HART_HAS_TIME,
+	SBI_HART_HAS_LAST_FEATURE = SBI_HART_HAS_SSTC,
 };
 
 struct sbi_scratch;

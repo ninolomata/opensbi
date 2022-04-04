@@ -40,6 +40,7 @@ static unsigned long hart_features_offset;
 static void mstatus_init(struct sbi_scratch *scratch)
 {
 	unsigned long mstatus_val = 0;
+	unsigned long menvcfg_val = 0;
 
 	/* Enable FPU */
 	if (misa_extension('D') || misa_extension('F'))
@@ -50,6 +51,24 @@ static void mstatus_init(struct sbi_scratch *scratch)
 		mstatus_val |=  MSTATUS_VS;
 
 	csr_write(CSR_MSTATUS, mstatus_val);
+
+	/*
+	 * The spec doesn't explicitly describe the reset value of menvcfg.
+	 * Enable access to stimecmp if sstc extension is present in the
+	 * hardware.
+	 */
+	if (sbi_hart_has_feature(scratch, SBI_HART_HAS_SSTC)) {
+#if __riscv_xlen == 32
+		menvcfg_val = csr_read(CSR_MENVCFGH);
+		menvcfg_val |= MENVCFGH_STCE;
+		csr_write(CSR_MENVCFGH, menvcfg_val);
+#else
+		menvcfg_val = csr_read(CSR_MENVCFG);
+		menvcfg_val |= MENVCFG_STCE;
+		csr_write(CSR_MENVCFG, menvcfg_val);
+#endif
+	}
+
 
 	/* Disable user mode usage of all perf counters except default ones (CY, TM, IR) */
 	if (misa_extension('S') &&
@@ -283,6 +302,9 @@ static inline char *sbi_hart_feature_id2string(unsigned long feature)
 	case SBI_HART_HAS_TIME:
 		fstr = "time";
 		break;
+	case SBI_HART_HAS_SSTC:
+		fstr = "sstc";
+ 		break;
 	default:
 		break;
 	}
@@ -507,6 +529,21 @@ __pmp_skip:
 	csr_read_allowed(CSR_TIME, (unsigned long)&trap);
 	if (!trap.cause)
 		hfeatures->features |= SBI_HART_HAS_TIME;
+	/* Detect if hart supports menvcfg CSR */
+	csr_read_allowed(CSR_MENVCFG, (unsigned long)&trap);
+	if (!trap.cause) {
+		sbi_printf("Supports MENVCFG \r\n");
+		hfeatures->features |= SBI_HART_HAS_MENVCFG;
+	}
+	/**
+	* Detect if hart supports stimecmp CSR(Sstc extension) and menvcfg is
+	* implemented.
+	*/
+	csr_read_allowed(CSR_STIMECMP, (unsigned long)&trap);
+	sbi_printf("Supports TEST \r\n");
+	if (!trap.cause && sbi_hart_has_feature(scratch, SBI_HART_HAS_MENVCFG))
+		hfeatures->features |= SBI_HART_HAS_SSTC;
+
 }
 
 int sbi_hart_reinit(struct sbi_scratch *scratch)

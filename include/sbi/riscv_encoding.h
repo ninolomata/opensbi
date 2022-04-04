@@ -300,8 +300,15 @@
 #define CSR_STVAL			0x143
 #define CSR_SIP				0x144
 
+
+
 /* Supervisor Protection and Translation */
 #define CSR_SATP			0x180
+
+/* Sstc extension */
+#define CSR_STIMECMP			0x14D
+#define CSR_STIMECMPH			0x15D
+
 
 /* ===== Hypervisor-level CSRs ===== */
 
@@ -338,6 +345,12 @@
 #define CSR_VSIP			0x244
 #define CSR_VSATP			0x280
 
+#if __riscv_xlen == 64
+#define MENVCFG_STCE			(_UL(1) << 63)
+#else
+#define MENVCFGH_STCE			(_UL(1) << 31)
+#endif
+
 /* ===== Machine-level CSRs ===== */
 
 /* Machine Information Registers */
@@ -355,6 +368,10 @@
 #define CSR_MTVEC			0x305
 #define CSR_MCOUNTEREN			0x306
 #define CSR_MSTATUSH			0x310
+
+/* Environment configuration CSRs */
+#define CSR_MENVCFG			0x30A
+#define CSR_MENVCFGH			0x31A
 
 /* Machine Trap Handling */
 #define CSR_MSCRATCH			0x340
