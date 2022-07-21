@@ -130,14 +130,12 @@ void sbi_timer_event_start(u64 next_event)
 	 */
 	if (sbi_hart_has_feature(sbi_scratch_thishart_ptr(), SBI_HART_HAS_SSTC)) {
 #if __riscv_xlen == 32
-		sbi_printf("hello \r\n");
 		csr_write(CSR_STIMECMP, next_event & 0xFFFFFFFF);
 		csr_write(CSR_STIMECMPH, next_event >> 32);
 #else
 		csr_write(CSR_STIMECMP, next_event);
 #endif
 	} else if (timer_dev && timer_dev->timer_event_start) {
-		sbi_printf("hello 1 \r\n");
 		timer_dev->timer_event_start(next_event);
 		csr_clear(CSR_MIP, MIP_STIP);
 	}
